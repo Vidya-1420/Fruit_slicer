@@ -1,0 +1,414 @@
+:root {
+  --primary-color: #ff4757;
+  --primary-hover: #ff6b81;
+  --secondary-color: #2ed573;
+  --secondary-hover: #7bed9f;
+  --accent-color: #ffa502;
+  --bg-gradient: linear-gradient(135deg, #1e130c 0%, #2f1b10 50%, #170d08 100%);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --card-border: rgba(255, 255, 255, 0.15);
+  --text-main: #ffffff;
+  --text-muted: #dcdde1;
+  --font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-family);
+  background: var(--bg-gradient);
+  color: var(--text-main);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Base screen container */
+.screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Game Canvas & Game Screen Layout */
+.game-screen-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  overflow: hidden;
+  cursor: none;
+}
+
+.game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: none;
+}
+
+.game-ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+  z-index: 10;
+}
+
+.game-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Lives container */
+.lives-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: rgba(18, 9, 5, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 0.45rem 1.1rem;
+  border-radius: 30px;
+  border: 2px solid rgba(255, 71, 87, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.heart-icon {
+  font-size: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-block;
+}
+
+.heart-active {
+  filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.9));
+  animation: heartBeat 1.8s infinite ease-in-out;
+}
+
+.heart-lost {
+  opacity: 0.25;
+  filter: grayscale(1);
+  transform: scale(0.85);
+}
+
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+/* Live Score Badge */
+.score-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(18, 9, 5, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 0.4rem 1.3rem;
+  border-radius: 24px;
+  border: 2px solid rgba(254, 202, 87, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(254, 202, 87, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.score-label {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffa502;
+  text-transform: uppercase;
+  font-family: 'Segoe UI Black', 'Impact', 'Arial Black', sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.score-number {
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  font-family: 'Segoe UI Black', 'Impact', 'Arial Black', sans-serif;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(254, 202, 87, 0.6);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.5);
+}
+
+/* Gameplay Exit Button */
+.btn-exit {
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(255, 71, 87, 0.25);
+  border: 2px solid rgba(255, 71, 87, 0.5);
+  color: #ffffff;
+  font-family: 'Segoe UI Black', 'Impact', 'Arial Black', sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 0.5rem 1.25rem;
+  border-radius: 24px;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.btn-exit:hover {
+  background: rgba(255, 71, 87, 0.5);
+  color: #ffffff;
+  border-color: #ff4757;
+  box-shadow: 0 0 16px rgba(255, 71, 87, 0.8);
+  transform: scale(1.06);
+}
+
+.btn-exit:active {
+  transform: scale(0.95);
+}
+
+/* Card styling */
+.game-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  max-width: 440px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.game-over-card {
+  gap: 1.5rem;
+}
+
+.fruit-badge {
+  font-size: 2.5rem;
+  letter-spacing: 0.5rem;
+  margin-bottom: -0.5rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.game-title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: linear-gradient(45deg, #ff6b6b, #feca57, #ff9ff3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(254, 202, 87, 0.3));
+}
+
+.game-over-title {
+  background: linear-gradient(45deg, #ff4757, #ff6b81, #ff7f50);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: -0.25rem;
+}
+
+.game-subtitle {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.game-over-icon {
+  font-size: 3.5rem;
+  animation: bounce 0.6s ease infinite alternate;
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+/* High Score Achievement Badge */
+.new-record-badge {
+  background: linear-gradient(135deg, #ffa502, #ff6348);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  padding: 0.4rem 1.2rem;
+  border-radius: 30px;
+  box-shadow: 0 4px 15px rgba(255, 165, 2, 0.5);
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+/* Statistics Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+.stat-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-family: 'Segoe UI', system-ui, monospace;
+}
+
+.current-score {
+  color: #ff6b81;
+  text-shadow: 0 0 10px rgba(255, 107, 129, 0.3);
+}
+
+.high-score {
+  color: #feca57;
+  text-shadow: 0 0 10px rgba(254, 202, 87, 0.3);
+}
+
+/* Button styles */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  align-items: center;
+}
+
+.btn {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 1rem 2.25rem;
+  border-radius: 50px;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 280px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ff4757, #ff6b81);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ff6b81, #ff4757);
+  box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+  .game-card {
+    padding: 2rem 1.5rem;
+    border-radius: 20px;
+  }
+
+  .game-title {
+    font-size: 2.2rem;
+  }
+
+  .fruit-badge {
+    font-size: 2rem;
+  }
+
+  .btn {
+    font-size: 1.05rem;
+    padding: 0.9rem 1.8rem;
+  }
+
+  .stat-value {
+    font-size: 1.6rem;
+  }
+}
