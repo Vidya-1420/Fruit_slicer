@@ -255,18 +255,19 @@ export class Fruit {
     this.x = options.x !== undefined ? options.x : margin + Math.random() * (canvasWidth - margin * 2);
     this.y = options.y !== undefined ? options.y : canvasHeight + this.radius + 10;
 
-    const centerBias = (canvasWidth / 2 - this.x) * 0.4;
-    this.vx = options.vx !== undefined ? options.vx : (Math.random() - 0.5) * (120 * speedMultiplier) + centerBias;
+    const centerBias = (canvasWidth / 2 - this.x) * 0.35;
+    this.vx = options.vx !== undefined ? options.vx : (Math.random() - 0.5) * (70 * speedMultiplier) + centerBias;
 
-    // Scale gravity and upward launch with speedMultiplier for faster reaction window
-    this.gravity = 750 * Math.pow(speedMultiplier, 1.25);
+    // Floaty arcade gravity with generous hang time at the peak
+    const baseGravity = 540;
+    this.gravity = baseGravity * Math.pow(speedMultiplier, 1.1);
 
-    const minLaunch = Math.sqrt(2 * 750 * (canvasHeight * 0.55)) * speedMultiplier;
-    const maxLaunch = Math.sqrt(2 * 750 * (canvasHeight * 0.78)) * speedMultiplier;
+    const minLaunch = Math.sqrt(2 * baseGravity * (canvasHeight * 0.52)) * speedMultiplier;
+    const maxLaunch = Math.sqrt(2 * baseGravity * (canvasHeight * 0.72)) * speedMultiplier;
     this.vy = options.vy !== undefined ? options.vy : -(minLaunch + Math.random() * (maxLaunch - minLaunch));
 
     this.rotation = Math.random() * Math.PI * 2;
-    this.rotationSpeed = (Math.random() - 0.5) * (6 * speedMultiplier);
+    this.rotationSpeed = (Math.random() - 0.5) * (3.5 * speedMultiplier);
     this.sliced = false;
   }
 

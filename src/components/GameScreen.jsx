@@ -33,39 +33,75 @@ const FRUIT_SCORES = {
 const COMBO_TIME_WINDOW_MS = 220;
 
 /**
- * DIFFICULTY SCALING CONFIGURATION & TUNING
+ * REPEATING 300-SECOND (5-MINUTE) "BREATHING" CYCLE CONFIGURATION & TUNING
  *
- * How the continuous difficulty scaling works:
- * - `survivalTime` continuously tracks the player's elapsed survival time in seconds.
- * - An exponential decay curve computes a smooth, continuous `difficultyProgress` from 0.0 (start) to 1.0 (max):
- *     `difficultyProgress = 1 - Math.exp(-survivalTime / RAMP_HALFLIFE)`
- * - This progress smoothly scales:
- *   1. Spawn Interval: from `INITIAL_SPAWN_INTERVAL` (1.45s) down to `MIN_SPAWN_INTERVAL` (0.40s)
- *   2. Launch Speed: from `INITIAL_SPEED_MULTIPLIER` (1.0x) up to `MAX_SPEED_MULTIPLIER` (1.30x)
- *   3. Multi-Fruit Barrage Chance: from 0% up to 35% chance to launch multiple fruits in rapid succession.
+ * ---------------------------------------------------------------------------------------------------
+ * 5-Minute Breathing Cycle Pattern (Total Duration: 300s, repeats indefinitely):
+ * ---------------------------------------------------------------------------------------------------
+ * 1. 0:00 – 1:00 (  0s ..  60s | 60s duration) -> 🟢 Low Intensity (Relaxed start/reset)
+ * 2. 1:00 – 2:00 ( 60s .. 120s | 60s duration) -> 🟡 Medium Intensity (Gradual build-up)
+ * 3. 2:00 – 2:03 (120s .. 123s |  3s duration) -> 🔴 High Intensity Spike #1 (Short 3s adrenaline burst!)
+ * 4. 2:03 – 3:30 (123s .. 210s | 87s duration) -> 🟢 Low Intensity (Generous recovery & breathing room)
+ * 5. 3:30 – 4:57 (210s .. 297s | 87s duration) -> 🟡 Medium Intensity (Second steady build-up)
+ * 6. 4:57 – 5:00 (297s .. 300s |  3s duration) -> 🔴 High Intensity Spike #2 (Short 3s climax burst!)
+ * -> Loop back to 0:00 (repeats indefinitely for as long as player survives)
+ * ---------------------------------------------------------------------------------------------------
  *
- * Where to Adjust the Tuning:
- * - To make the ramp FASTER: Decrease `RAMP_HALFLIFE` (e.g. set to 35s or 45s).
- * - To make the ramp SLOWER: Increase `RAMP_HALFLIFE` (e.g. set to 90s or 120s).
- * - To adjust starting comfort: Edit `INITIAL_SPAWN_INTERVAL` or `INITIAL_SPEED_MULTIPLIER`.
- * - To adjust maximum endgame cap: Edit `MIN_SPAWN_INTERVAL` or `MAX_SPEED_MULTIPLIER`.
+ * How the Modulo-Based Cycle Lookup Works:
+ * - `survivalTime` tracks the player's total elapsed seconds in the current game.
+ * - Calculating `cycleTime = survivalTime % 300` collapses any elapsed time (whether 45s, 320s, or 1200s)
+ *   into its exact relative position within the 0 to 300 second window.
+ * - We then find which phase in `BREATHING_CYCLE_TIMELINE` contains `cycleTime` (`cycleTime >= startTime && cycleTime < endTime`)
+ *   to determine the active target intensity tier.
+ *
+ * How the Smooth Easing Between Tiers is Calculated:
+ * - Whenever the phase changes (e.g. entering or leaving the 3-second High bursts), we do NOT snap parameters abruptly.
+ * - Instead, each frame we apply an exponential moving average (lerp) towards the target tier's values:
+ *     `liveParam += (targetParam - liveParam) * Math.min(1.0, deltaTime * LERP_SPEED)`
+ * - With `LERP_SPEED = 2.5`, parameters smoothly bridge ~90% of the gap in about 1.0 second, creating a
+ *   natural swelling build-up and graceful cool-down.
+ *
+ * No Visible Indicators:
+ * - Pacing is felt purely through gameplay rhythm and fruit flow with zero on-screen text, popups, or level numbers.
  */
-const DIFFICULTY_CONFIG = {
-  // Time in seconds to reach ~63% of maximum intensity (lower = faster ramp-up)
-  RAMP_HALFLIFE: 60,
+const TOTAL_CYCLE_DURATION_SEC = 300; // 5-minute repeating cycle
 
-  // Spawn interval range (seconds between fruit/bomb spawns)
-  INITIAL_SPAWN_INTERVAL: 1.45,
-  MIN_SPAWN_INTERVAL: 0.40,
-  SPAWN_JITTER: 0.22,
-
-  // Launch speed multiplier (scales upward launch velocity & gravity)
-  INITIAL_SPEED_MULTIPLIER: 1.0,
-  MAX_SPEED_MULTIPLIER: 1.30,
-
-  // Multi-fruit barrage probability at higher intensity
-  MAX_MULTI_FRUIT_CHANCE: 0.35,
+const WAVE_TIERS = {
+  low: {
+    name: 'Low',
+    spawnInterval: 1.40,      // Slow, relaxed spawn (~1.4s between fruits)
+    speedMultiplier: 1.00,    // Gentle launch speed (1.00x)
+    bombChance: 0.10,         // Minimal bombs (10%)
+    multiFruitChance: 0.05,   // Minimal barrages
+  },
+  medium: {
+    name: 'Medium',
+    spawnInterval: 1.00,      // Moderate spawn (~1.0s between fruits)
+    speedMultiplier: 1.08,    // Moderate launch speed (1.08x)
+    bombChance: 0.18,         // Moderate bombs (18%)
+    multiFruitChance: 0.18,   // Moderate barrages
+  },
+  high: {
+    name: 'High',
+    spawnInterval: 0.60,      // Fast spawn (~0.60s between fruits)
+    speedMultiplier: 1.18,    // Fast launch speed (1.18x) - exciting short spike, fair & reactable
+    bombChance: 0.24,         // Active bombs (24%)
+    multiFruitChance: 0.30,   // High excitement short spike
+  },
 };
+
+/**
+ * Full 300-Second (5-Minute) Cycle Timeline Array:
+ * Easily adjust startTime, endTime, or tier below:
+ */
+const BREATHING_CYCLE_TIMELINE = [
+  { startTime: 0,   endTime: 60,  tier: 'low' },     // 0:00 - 1:00 (60s) -> Low
+  { startTime: 60,  endTime: 120, tier: 'medium' },  // 1:00 - 2:00 (60s) -> Medium
+  { startTime: 120, endTime: 123, tier: 'high' },    // 2:00 - 2:03 ( 3s) -> High Spike #1
+  { startTime: 123, endTime: 210, tier: 'low' },     // 2:03 - 3:30 (87s) -> Low
+  { startTime: 210, endTime: 297, tier: 'medium' },  // 3:30 - 4:57 (87s) -> Medium
+  { startTime: 297, endTime: 300, tier: 'high' },    // 4:57 - 5:00 ( 3s) -> High Spike #2
+];
 
 /**
  * COMBO CLUSTER SPAWN CONFIGURATION & TUNING
@@ -141,12 +177,21 @@ export default function GameScreen({ onGameOver, onExit }) {
   const screenShakeRef = useRef(0);
 
   // Slice trail, pointer tracking & time-window combo trackers
+  // Slice trail, pointer tracking & time-window combo trackers
   const trailRef = useRef([]);
   const isSwipingRef = useRef(false);
   const pointerPosRef = useRef({ x: -100, y: -100, visible: false });
   const pointerAngleRef = useRef(-Math.PI / 4);
   const comboStreakRef = useRef(0); // Valid combo count within COMBO_TIME_WINDOW_MS
   const lastSliceTimeRef = useRef(0); // Timestamp of the previous fruit slice
+
+  // Live interpolated wave parameters for smooth ~1.0s transitions
+  const liveWaveParamsRef = useRef({
+    spawnInterval: WAVE_TIERS.low.spawnInterval,
+    speedMultiplier: WAVE_TIERS.low.speedMultiplier,
+    bombChance: WAVE_TIERS.low.bombChance,
+    multiFruitChance: WAVE_TIERS.low.multiFruitChance,
+  });
 
   // Window resize handler
   useEffect(() => {
@@ -368,31 +413,44 @@ export default function GameScreen({ onGameOver, onExit }) {
     // 1. Filter expired trail points
     trailRef.current = trailRef.current.filter((point) => now - point.time < TRAIL_LIFETIME);
 
-    // 2. Track Survival Time & Compute Continuous Difficulty Progression
+    // 2. 300-Second (5-Minute) Breathing Cycle Progression & Smooth Easing (~1.0s lerp)
     if (!isGameOverRef.current) {
       survivalTimeRef.current += deltaTime;
       const elapsed = survivalTimeRef.current;
+      const cycleTime = elapsed % TOTAL_CYCLE_DURATION_SEC; // Modulo 300s cycle position
 
-      // Smooth asymptotic curve from 0.0 (fresh start) toward 1.0 (max intensity)
-      const difficultyProgress = 1 - Math.exp(-elapsed / DIFFICULTY_CONFIG.RAMP_HALFLIFE);
+      // Look up the active target tier in the 300-second timeline schedule
+      let activeTier = WAVE_TIERS.low;
+      for (let i = 0; i < BREATHING_CYCLE_TIMELINE.length; i++) {
+        const phase = BREATHING_CYCLE_TIMELINE[i];
+        if (cycleTime >= phase.startTime && cycleTime < phase.endTime) {
+          activeTier = WAVE_TIERS[phase.tier];
+          break;
+        }
+      }
 
-      // Continuous spawn interval scaling: starts at 1.45s and ramps down toward 0.40s
-      const currentBaseInterval =
-        DIFFICULTY_CONFIG.INITIAL_SPAWN_INTERVAL -
-        difficultyProgress * (DIFFICULTY_CONFIG.INITIAL_SPAWN_INTERVAL - DIFFICULTY_CONFIG.MIN_SPAWN_INTERVAL);
+      // Smoothly ease parameters towards target tier over ~1.0 second (responsive build-up & cool-down)
+      const lerpSpeed = 2.5; // Bridges ~90% of change within ~1 second
+      const lerpFactor = Math.min(1.0, deltaTime * lerpSpeed);
+      const liveParams = liveWaveParamsRef.current;
 
-      // Continuous speed multiplier: starts at 1.0x and ramps up toward 1.30x
-      const currentSpeedMultiplier =
-        DIFFICULTY_CONFIG.INITIAL_SPEED_MULTIPLIER +
-        difficultyProgress * (DIFFICULTY_CONFIG.MAX_SPEED_MULTIPLIER - DIFFICULTY_CONFIG.INITIAL_SPEED_MULTIPLIER);
+      liveParams.spawnInterval += (activeTier.spawnInterval - liveParams.spawnInterval) * lerpFactor;
+      liveParams.speedMultiplier += (activeTier.speedMultiplier - liveParams.speedMultiplier) * lerpFactor;
+      liveParams.bombChance += (activeTier.bombChance - liveParams.bombChance) * lerpFactor;
+      liveParams.multiFruitChance += (activeTier.multiFruitChance - liveParams.multiFruitChance) * lerpFactor;
 
-      // 3. Spawner Logic (Frequency increases continuously with survival time)
+      const currentSpawnInterval = liveParams.spawnInterval;
+      const currentSpeedMultiplier = liveParams.speedMultiplier;
+      const currentBombChance = liveParams.bombChance;
+      const currentMultiChance = liveParams.multiFruitChance;
+
+      // 3. Spawner Logic (Frequency & speed driven by smooth wave cycle)
       spawnTimerRef.current += deltaTime;
       if (spawnTimerRef.current >= nextSpawnTimeRef.current) {
         spawnTimerRef.current = 0;
         nextSpawnTimeRef.current = Math.max(
-          DIFFICULTY_CONFIG.MIN_SPAWN_INTERVAL,
-          currentBaseInterval + (Math.random() - 0.5) * DIFFICULTY_CONFIG.SPAWN_JITTER
+          0.50,
+          currentSpawnInterval + (Math.random() - 0.5) * 0.16
         );
 
         // Check if this spawn cycle is a special Combo Cluster opportunity (~18% chance)
@@ -406,13 +464,13 @@ export default function GameScreen({ onGameOver, onExit }) {
           // Shared center launch point
           const clusterMargin = 130;
           const clusterCenterX = clusterMargin + Math.random() * (canvas.width - clusterMargin * 2);
-          const centerBias = (canvas.width / 2 - clusterCenterX) * 0.4;
+          const centerBias = (canvas.width / 2 - clusterCenterX) * 0.35;
 
-          // Synchronized upward launch velocity so they peak and hang in the air together
-          const minLaunch = Math.sqrt(2 * 750 * (canvas.height * 0.58)) * currentSpeedMultiplier;
-          const maxLaunch = Math.sqrt(2 * 750 * (canvas.height * 0.76)) * currentSpeedMultiplier;
+          // Synchronized upward launch velocity matching base gravity 540
+          const minLaunch = Math.sqrt(2 * 540 * (canvas.height * 0.52)) * currentSpeedMultiplier;
+          const maxLaunch = Math.sqrt(2 * 540 * (canvas.height * 0.72)) * currentSpeedMultiplier;
           const baseVy = -(minLaunch + Math.random() * (maxLaunch - minLaunch));
-          const baseVx = (Math.random() - 0.5) * 50 + centerBias;
+          const baseVx = (Math.random() - 0.5) * 45 + centerBias;
 
           // Pick distinct fruit types within the cluster for visual variety
           const fruitTypes = [
@@ -435,7 +493,7 @@ export default function GameScreen({ onGameOver, onExit }) {
 
             // Minimal velocity variance (+/- 2.5%) ensures synchronized arc
             const fruitVy = baseVy * (0.975 + Math.random() * 0.05);
-            const fruitVx = baseVx + offsetMultiplier * 14;
+            const fruitVx = baseVx + offsetMultiplier * 12;
             const fruitType = shuffledTypes[c % shuffledTypes.length];
 
             // Stagger spawn by 0ms or tiny 30ms for natural simultaneous release
@@ -464,16 +522,15 @@ export default function GameScreen({ onGameOver, onExit }) {
             }
           }
         } else {
-          // --- NORMAL DEFAULT SPAWN (Single fruit or bomb) ---
-          const isBomb = Math.random() < 0.18;
+          // --- NORMAL DEFAULT SPAWN (Single fruit or bomb based on live wave bombChance) ---
+          const isBomb = Math.random() < currentBombChance;
           if (isBomb) {
             bombsRef.current.push(new Bomb(canvas.width, canvas.height, currentSpeedMultiplier));
           } else {
             fruitsRef.current.push(new Fruit(canvas.width, canvas.height, currentSpeedMultiplier));
 
-            // Multi-fruit barrage chance at higher intensity
-            const multiChance = difficultyProgress * DIFFICULTY_CONFIG.MAX_MULTI_FRUIT_CHANCE;
-            if (Math.random() < multiChance) {
+            // Multi-fruit barrage chance scaling with active wave tier
+            if (Math.random() < currentMultiChance) {
               setTimeout(() => {
                 if (!isGameOverRef.current && canvasRef.current) {
                   fruitsRef.current.push(new Fruit(canvas.width, canvas.height, currentSpeedMultiplier));

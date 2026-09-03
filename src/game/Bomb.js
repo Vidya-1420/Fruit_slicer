@@ -23,19 +23,20 @@ export class Bomb {
     this.y = canvasHeight + this.radius + 10;
 
     // Horizontal drift towards center
-    const centerBias = (canvasWidth / 2 - this.x) * 0.4;
-    this.vx = (Math.random() - 0.5) * (100 * speedMultiplier) + centerBias;
+    const centerBias = (canvasWidth / 2 - this.x) * 0.35;
+    this.vx = (Math.random() - 0.5) * (70 * speedMultiplier) + centerBias;
 
-    // Scale gravity and upward launch with speedMultiplier
-    this.gravity = 750 * Math.pow(speedMultiplier, 1.25);
+    // Floaty arcade gravity matching fruits
+    const baseGravity = 540;
+    this.gravity = baseGravity * Math.pow(speedMultiplier, 1.1);
 
-    const minLaunch = Math.sqrt(2 * 750 * (canvasHeight * 0.55)) * speedMultiplier;
-    const maxLaunch = Math.sqrt(2 * 750 * (canvasHeight * 0.75)) * speedMultiplier;
+    const minLaunch = Math.sqrt(2 * baseGravity * (canvasHeight * 0.52)) * speedMultiplier;
+    const maxLaunch = Math.sqrt(2 * baseGravity * (canvasHeight * 0.70)) * speedMultiplier;
     this.vy = -(minLaunch + Math.random() * (maxLaunch - minLaunch));
 
     // Rotation
     this.rotation = Math.random() * Math.PI * 2;
-    this.rotationSpeed = (Math.random() - 0.5) * (4 * speedMultiplier);
+    this.rotationSpeed = (Math.random() - 0.5) * (3.0 * speedMultiplier);
 
     // Spark animation timer for lit fuse
     this.sparkTimer = 0;
